@@ -9,6 +9,7 @@
 * Supports classes, interfaces and arbitrary values as tokens
 * Supports injection on union types (ie `OptionA | OptionB`)
 * Inject on both constructor parameters and properties
+* Alter injectables using aspect-oriented programming
 * Also supports the standard `emitDecoratorMetadata`-style injection (a la Angular, `injection-js`, 
   `@alterior/di`, etc)
 
