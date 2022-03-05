@@ -295,4 +295,27 @@ describe('Injector', () => {
         
         expect(caughtError).to.exist;
     });
+    it.only('injects on functions', () => {
+        class A { foo = 123 };
+        class B { bar = 321 };
+
+        function foo(a : A, b : B) {
+            return a.foo;
+        }
+
+        function bar(a : A, b : B) {
+            return b.bar;
+        }
+
+        function foobar(a : A, b : B) {
+            return a.foo + b.bar;
+        }
+
+        let resultFoo = injector([provide(A), provide(B)]).invoke(globalThis, foo);
+        let resultBar = injector([provide(A), provide(B)]).invoke(globalThis, bar);
+        let resultFooBar = injector([provide(A), provide(B)]).invoke(globalThis, foobar);
+        expect(resultFoo).to.equal(123);
+        expect(resultBar).to.equal(321);
+        expect(resultFooBar).to.equal(123 + 321);
+    });
 });

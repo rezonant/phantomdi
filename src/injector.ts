@@ -192,7 +192,7 @@ export function provide<T>(constructor : Constructor<T>, klass? : Constructor<T>
 export function provide<T>(token : any, provider : Provider): [ any, Function ];
 export function provide(token : any, value? : any): [ any, Function ] {
     if (arguments.length === 1)
-        return [token, construct(token)];
+        return [token, token && reflect(token) instanceof ReflectedClass ? construct(token) : token];
     else
         return [token, value && reflect(value) instanceof ReflectedClass ? construct(value) : value];
 }
