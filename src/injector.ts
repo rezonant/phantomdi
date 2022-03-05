@@ -1,4 +1,4 @@
-import { InterfaceToken, reflect, ReflectedTypeRef } from 'typescript-rtti';
+import { InterfaceToken, reflect, ReflectedConstructorParameter, ReflectedFunctionParameter, ReflectedMethodParameter, ReflectedTypeRef } from 'typescript-rtti';
 import { Constructor } from './common';
 export interface Dependency<T = any> { tokens : any[]; optional? : boolean; default? : () => T; }
 
@@ -38,20 +38,25 @@ export class Injector {
      * Provide an instance for the given class. 
      * @param constructor 
      */
-    provide<T>(constructor : Constructor<T>): T;
+    provide<T>(constructor : Constructor<T>, defaultValue? : any): T;
     /**
      * Provide an object that implements the given interface via a token that represents it.
      * @param token 
      */
-    provide<T>(token : InterfaceToken): any;
-    provide(token : any): any {
+    provide<T>(token : InterfaceToken, defaultValue? : any): any;
+    provide(token : any, defaultValue? : any): any {
+        let hasDefault = arguments.length > 1;
+
         if (this.#resolved.has(token))
             return this.#resolved.get(token);
     
-        if (!this.#providers.has(token))
-            return undefined;
+        if (!this.#providers.has(token)) {
+            if (!hasDefault)
+                throw new Error(`No provider for dependency: ${token}`);
+            return defaultValue;
+        }
         
-        let resolved = this.invoke(this.#providers.get(token));
+        let resolved = this.invoke(globalThis, this.#providers.get(token));
         this.#resolved.set(token, resolved);
         return resolved;
     }
@@ -61,8 +66,8 @@ export class Injector {
      * @param func 
      * @returns The result of the function
      */
-    invoke<T = any>(func : ((...args) => T) | Function): T {
-        return <T> func(...this.analyze(func).map(d => this.resolve(d)));
+    invoke<T = any>(target : any, func : ((...args) => T) | Function): T {
+        return <T> func.call(target, ...this.analyze(func).map(d => this.resolve(d)));
     }
 
     /**
@@ -74,7 +79,24 @@ export class Injector {
      * @returns 
      */
     construct<T>(klass : Constructor<T>): T {
-        return new klass(...this.analyze(klass).map(d => this.resolve(d)));
+        return this.prepare(new klass(...this.analyze(klass).map(d => this.resolve(d))));
+    }
+
+    /**
+     * Applies property injection and calls the onInjectionCompleted lifecycle hook
+     * @param instance 
+     * @returns 
+     */
+    private prepare<T>(instance : T): T {
+        reflect(instance).properties
+            .filter(x => x.hasMetadata('pdi:inject'))
+            .forEach(p => instance[p.name] = this.provide(p.getMetadata('pdi:inject') ?? p.type.as('class').class))
+        ;
+
+        if (instance['onInjectionCompleted'])
+            this.invoke(instance, instance['onInjectionCompleted']);
+        
+        return instance;
     }
 
     /**
@@ -83,7 +105,7 @@ export class Injector {
      * @returns 
      */
     private resolve(dep : Dependency) {
-        return this.invoke(() => dep.tokens.map(t => this.provide(t)).filter(x => x)[0]);
+        return this.invoke(globalThis, () => dep.tokens.map(t => this.provide(t)).filter(x => x)[0]);
     }
 
     /**
@@ -92,13 +114,18 @@ export class Injector {
      * @returns 
      */
     private analyze<T>(ctor : Constructor<T> | Function): Dependency[] {
-        return reflect(ctor).metadata('pdi:deps', () => {
-            return Object.seal(reflect(ctor).parameters.map(p => ({ 
-                ...this.dependency(p.type),
-                optional: p.isOptional,
-                default: p.initializer
-            })));
-        });
+        return reflect(ctor).metadata('pdi:deps', () => Object.seal(
+            reflect(ctor)
+                .parameters
+                .map(p => ({ ...this.paramDependency(p), optional: p.isOptional, default: p.initializer }))
+        ));
+    }
+
+    private paramDependency(param : ReflectedConstructorParameter | ReflectedFunctionParameter): Dependency {
+        if (param.parent?.hasMetadata(`pdi:inject:param:${param.index}`))
+            return { tokens: [ param.parent.getMetadata(`pdi:inject:param:${param.index}`)] };
+        else
+            return { ...this.typeDependency(param.type) }
     }
 
     /**
@@ -106,9 +133,12 @@ export class Injector {
      * @param typeRef 
      * @returns 
      */
-    private dependency(typeRef : ReflectedTypeRef) : Dependency {
+    private typeDependency(typeRef : ReflectedTypeRef, map = new Map<ReflectedTypeRef, Dependency>()) : Dependency {
+        if (!typeRef)
+            throw new Error(`No type reference provided`);
+
         if (typeRef.isUnion())
-            return { tokens: typeRef.types.map(t => this.dependency(t)).map(d => d.tokens).flat() };
+            return { tokens: typeRef.types.map(t => this.typeDependency(t, map)).map(d => d.tokens).flat() };
         else if (typeRef.isClass())
             return { tokens: [ typeRef.class ] };
         else if (typeRef.isInterface())
