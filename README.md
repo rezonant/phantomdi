@@ -202,3 +202,28 @@ class Bar {
 
 let bar = inject([ provide(Foo), provide(Bar) ]).provide(Bar);
 ```
+
+If you specify that a parameter or property is optional, it will be treated as optional. If you specify an initializer for a property or parameter it will automatically be considered "optional", with its value set automatically to the initializer.
+
+# Using without typescript-rtti
+
+When using `typescript-rtti`, no decorators are required, the library will automatically determine all relevant Typescript types and do the right thing. However you can still use the library without it- the library provides `@Injectable()` along with `@Inject()` and `@Optional()`, and it supports `emitDecoratorMetadata`:
+
+```typescript
+@Injectable()
+class Foo {
+    baz = 123;
+}
+
+@Injectable()
+class Bar {
+    constructor(readonly foo : Foo) {
+    }
+}
+
+let result = inject([ provide(Foo), provide(Bar) ]).provide(Bar).foo.baz;
+
+expect(result).to.equal(123);
+```
+
+As with other dependency injection libraries, technically any decorator on the class being injected is fine, the specific use of `@Injectable()` is not enforced.
