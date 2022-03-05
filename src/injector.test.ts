@@ -152,4 +152,50 @@ describe('Injector', () => {
         let b = injector([ [reify<A>(), () => ({ foo: 123 })],  provide(B) ]).provide(B);
         expect(b.a.foo).to.equal(123);
     });
+    it('supports unions', () => {
+        interface Foo {
+            foo : number;
+            fooThing();
+        }
+        interface Bar {
+            foo : number;
+            barThing();
+        }
+
+        class B {
+            constructor(readonly a : Foo | Bar) { }
+        }
+
+        let b = injector([ [reify<Foo>(), () => ({ foo: 123, fooThing() { } })],  provide(B) ]).provide(B);
+        expect(b.a.foo).to.equal(123);
+
+        b = injector([ [reify<Bar>(), () => ({ foo: 321, fooThing() { } })],  provide(B) ]).provide(B);
+        expect(b.a.foo).to.equal(321);
+    });
+    it('throws when neither provider is available', () => {
+        interface Foo {
+            foo : number;
+            fooThing();
+        }
+        interface Bar {
+            foo : number;
+            barThing();
+        }
+
+        class B {
+            constructor(readonly a : Foo | Bar) { }
+        }
+
+        let value = { foo: 123 };
+        let injector = new Injector([]);
+        let caughtError;
+
+        try {
+            injector.provide(B);
+        } catch (e) {
+            caughtError = e;
+        }
+        
+        expect(caughtError).to.exist;
+    });
 });

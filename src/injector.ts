@@ -53,7 +53,7 @@ export class Injector {
     
         if (!this.#providers.has(token)) {
             if (!hasDefault)
-                throw new Error(`No provider for dependency: ${token}`);
+                throw new Error(`No provider for dependency: ${token.name ?? token}`);
             return defaultValue;
         }
         
@@ -106,7 +106,7 @@ export class Injector {
      * @returns 
      */
     private resolve(dep : Dependency) {
-        return this.invoke(globalThis, () => dep.tokens.map(t => this.provide(t)).filter(x => x)[0]);
+        return this.invoke(globalThis, () => dep.tokens.map(t => this.provide(t, undefined)).filter(x => x)[0]);
     }
 
     /**
@@ -135,9 +135,6 @@ export class Injector {
      * @returns 
      */
     private typeDependency(typeRef : ReflectedTypeRef, map = new Map<ReflectedTypeRef, Dependency>()) : Dependency {
-        if (!typeRef)
-            throw new Error(`No type reference provided`);
-
         if (typeRef.isUnion())
             return { tokens: typeRef.types.map(t => this.typeDependency(t, map)).map(d => d.tokens).flat() };
         else if (typeRef.isClass())
