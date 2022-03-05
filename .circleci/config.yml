@@ -1,0 +1,56 @@
+# kick: 1
+
+version: 2.1
+
+commands:
+  run_tests:
+    description: "Build phantomdi and run the test suite"
+    parameters:
+      version:
+        type: string
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+          - v1-dependencies-<< parameters.version >>-{{ checksum "package.json" }}
+          - v1-dependencies-<< parameters.version >>-
+      - run: npm --version
+      - run: npm install
+      - save_cache:
+          paths:
+            - node_modules
+          key: v1-dependencies-<< parameters.version >>-{{ checksum "package.json" }}
+      - run: npm test
+      - run: npm test # ensure coverage is written
+      - store_artifacts:
+          path: coverage
+jobs:
+  node-17:
+    docker:
+      - image: circleci/node:17
+    working_directory: ~/repo
+    steps:
+      - run_tests:
+          version: "17"
+  node-16:
+    docker:
+      - image: circleci/node:16
+    working_directory: ~/repo
+    steps:
+      - run_tests:
+          version: "16"
+  node-14:
+    docker:
+      - image: circleci/node:14
+    working_directory: ~/repo
+    steps:
+      - run_tests:
+          version: "14"
+
+workflows:
+  version: 2
+  build:
+    jobs:
+      - node-17
+      - node-16
+      - node-14

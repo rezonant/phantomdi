@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "ttsc",
-    "test": "npm run build && node dist/test"
+    "test": "npm run build && nyc node dist/test"
   },
   "author": "William Lahti",
   "license": "MIT",
