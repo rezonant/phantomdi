@@ -20,6 +20,7 @@
     "nyc": "^15.1.0",
     "razmin": "^1.2.0",
     "source-map-support": "^0.5.21",
-    "ttypescript": "^1.5.13"
+    "ttypescript": "^1.5.13",
+    "typescript": "4.6"
   }
 }
