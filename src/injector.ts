@@ -190,6 +190,9 @@ export function construct(constructor : Constructor): Provider { return Injector
  */
 export function provide<T>(constructor : Constructor<T>, klass? : Constructor<T>): [ Function, Function ];
 export function provide<T>(token : any, provider : Provider): [ any, Function ];
-export function provide(token : any, value : any): [ any, Function ] {
-    return [token, reflect(construct) instanceof ReflectedClass ? construct(value) : value];
+export function provide(token : any, value? : any): [ any, Function ] {
+    if (arguments.length === 1)
+        return [token, construct(token)];
+    else
+        return [token, value && reflect(value) instanceof ReflectedClass ? construct(value) : value];
 }
