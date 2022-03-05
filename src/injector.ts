@@ -56,6 +56,13 @@ export class Injector {
             return this.#resolved.get(token);
     
         if (!this.#providers.has(token)) {
+            if (this.#parent) {
+                if (hasDefault)
+                    return this.#parent.provide(token, defaultValue);
+                else
+                    return this.#parent.provide(token);
+            }
+
             if (!hasDefault)
                 throw new Error(`No provider for dependency: ${token.name ?? token}`);
             return defaultValue;
