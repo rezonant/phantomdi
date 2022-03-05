@@ -3,14 +3,14 @@
 [![Version](https://img.shields.io/npm/v/phantomdi.svg)](https://www.npmjs.com/package/phantomdi)
 [![CircleCI](https://circleci.com/gh/rezonant/phantomdi/tree/main.svg?style=shield)](https://circleci.com/gh/rezonant/phantomdi/tree/main)
 
+`phantomdi` is a no-boilerplate DI framework for classes and functions which can optionally leverage [typescript-rtti](https://typescript-rtti.org). 
+
 * No decorators needed (when paired with `typescript-rtti`)
 * Supports classes, interfaces and arbitrary values as tokens
 * Supports injection on union types (ie `OptionA | OptionB`)
 * Inject on both constructor parameters and properties
 * Also supports the standard `emitDecoratorMetadata`-style injection (a la Angular, `injection-js`, 
   `@alterior/di`, etc)
-
-`phantomdi` is a no-boilerplate DI framework for classes and functions which can optionally leverage [typescript-rtti](https://typescript-rtti.org). 
 
 ```typescript
 import { injector, provide } from 'phantomdi';
@@ -37,8 +37,8 @@ Functions:
 ```typescript
 import { injector, provide } from 'phantomdi';
 
-class A { foo: 123 }
-class B { bar: 321 }
+class A { foo = 123 }
+class B { bar = 321 }
 
 function foobar(a : A, b : B) {
     return a.foo + b.bar;
@@ -118,7 +118,7 @@ expect(i.provide('bar')).to.equal(321);
 
 The `provide()` function provides syntactic sugar for defining these:
 
-```
+```typescript
 let i = injector([
     provide('foo', () => 123),
     provide('bar', () => 321)
@@ -149,3 +149,56 @@ injector([ provide(Foo) ]);
 
 This is done using the `construct(constructor)` function. It returns a provider function which constructs the 
 given class using the dependency injector.
+
+You can provide a class token using another class:
+
+```typescript
+class Foo { }
+class Bar extends Foo { }
+
+injector([ provide(Foo, Bar) ]);
+```
+
+You can also invoke a function by injecting its parameters based on the available metadata:
+
+```typescript
+class Foo { bar = 123; }
+
+let result = injector([ provide(Foo) ]).invoke((foo : Foo) => foo.bar);
+
+expect(result).to.equal(123);
+```
+
+In addition to parameter injection, you can do property injection:
+
+```typescript
+class Foo {
+    baz = 123;
+}
+
+class Bar {
+    @Inject() foo : Foo;
+}
+
+let result = inject([ provide(Foo), provide(Bar) ]).provide(Bar).foo.baz;
+
+expect(result).to.equal(123);
+```
+
+You can define an `onInjectionCompleted()` method which will get called after all injection is resolved:
+
+```typescript
+class Foo {
+    baz = 123;
+}
+
+class Bar {
+    @Inject() foo : Foo;
+
+    onInjectionCompleted() {
+        expect(this.foo.baz).to.equal(123);
+    }
+}
+
+let bar = inject([ provide(Foo), provide(Bar) ]).provide(Bar);
+```
