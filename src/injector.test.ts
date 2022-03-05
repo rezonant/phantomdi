@@ -1,7 +1,8 @@
 import { describe, it } from "razmin";
-import { construct, Injector, provide } from "./injector";
+import { construct, injector, Injector, provide } from "./injector";
 import { expect } from "chai";
 import { Inject } from "./decorators";
+import { reify } from "typescript-rtti";
 
 describe('Injector', () => {
     it('performs simple class injection', () => {
@@ -80,6 +81,10 @@ describe('Injector', () => {
         expect(b.foo).to.equal(123);
         expect(b.a).to.equal(value);
     })
+    it('returns provided default value when no provider is available', () => {
+        let injector = new Injector([]);
+        expect(injector.provide({ foo: 123 }, 321)).to.equal(321);
+    });
     it('throws when no provider is available', () => {
         const TOKEN = { name: 'something' };
 
@@ -134,5 +139,17 @@ describe('Injector', () => {
         injector.provide(B);
         
         expect(count).to.equal(1);
+    });
+    it('supports interfaces', () => {
+        interface A {
+            foo : number;
+        }
+
+        class B {
+            constructor(readonly a : A) { }
+        }
+
+        let b = injector([ [reify<A>(), () => ({ foo: 123 })],  provide(B) ]).provide(B);
+        expect(b.a.foo).to.equal(123);
     });
 });

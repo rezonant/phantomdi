@@ -44,6 +44,7 @@ export class Injector {
      * @param token 
      */
     provide<T>(token : InterfaceToken, defaultValue? : any): any;
+    provide(token : any, defaultValue? : any): any;
     provide(token : any, defaultValue? : any): any {
         let hasDefault = arguments.length > 1;
 
