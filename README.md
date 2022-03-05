@@ -102,6 +102,41 @@ expect(injector.provide(A).foo).to.equal(555);
 expect(injector.provide(B).bar).to.equal(321);
 ```
 
+Alterations:
+
+```typescript
+import { provide, alter, injector } from 'phantomdi';
+
+class A {
+    bar = 123;
+    foo() {
+        return 'original';
+    }
+}
+
+let i = injector([ provide(A), alter(A, {
+    beforeFoo() {
+        console.log(`foo() is about to run`);
+    }
+
+    afterFoo() {
+        console.log(`foo() is finished running`);
+    }
+
+    aroundFoo(foo : () => string) {
+        return function () {
+            return `around(${foo.call(this)})`
+        }
+    }
+
+})]);
+
+let a = i.provide(A);
+
+expect(a.bar).to.equal(123);
+expect(a.foo()).to.equal('around(original)');
+```
+
 # API
 
 The `injector()` function (and the `Injector` constructor) accept an array of providers. Each provider is a tuple of two values: a token and a function which provides the value for that token.
@@ -227,3 +262,16 @@ expect(result).to.equal(123);
 ```
 
 As with other dependency injection libraries, technically any decorator on the class being injected is fine, the specific use of `@Injectable()` is not enforced.
+
+# Alterations
+
+Alterations are special providers. Use `alter(token, provider)` to define an alteration provider.
+The provider function is invoked in a special child injector where `token` is already provided, 
+and the provider is expected to return a new value for `token`. An alteration provider usually uses 
+`Proxy` to modify the value injected for `token` in some way, but it could also completely replace 
+the object.
+
+You can also pass a special alteration definition object (`Alteration<T>`) to `alter()` which will 
+create the `Proxy` for you. That definition supports adding functions before (ie `beforeMethod()`), after (ie `afterMethod()`), and around (ie `aroundMethod()`) the 
+original function value. You can completely replace the method by providing a function property with the 
+same name as the method (ie `method()`)

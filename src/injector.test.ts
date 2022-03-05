@@ -1,5 +1,5 @@
 import { describe, it } from "razmin";
-import { construct, injector, Injector, provide } from "./injector";
+import { alter, construct, injector, Injector, provide } from "./injector";
 import { expect } from "chai";
 import { Inject, Optional } from "./decorators";
 import { reify } from "typescript-rtti";
@@ -373,5 +373,125 @@ describe('Injector', () => {
 
         let result = injector([provide(A)]).invoke(globalThis, foobar);
         expect(result).to.equal(123 + 555);
+    });
+    it('allows for altering a method on an injected class', () => {
+        class A {
+            bar = 'abc';
+            foo(faz : number) { return 123; } 
+        };
+
+        let i = injector([provide(A), alter(A, {
+            foo() { return 321; }
+        })]);
+
+        let a = i.provide(A);
+        expect(a.bar).to.equal('abc');
+        expect(a.foo(555)).to.equal(321);
+    });
+    it('allows for observing the start of a method on an injected class', () => {
+        let result : string = '';
+        class A {
+            bar = 'abc';
+            foo(faz : number) { 
+                result += faz.toString();
+                return 'original';
+            } 
+        };
+
+        let i = injector([provide(A), alter(A, {
+            beforeFoo() { result += 'b' }
+        })]);
+
+        let a = i.provide(A);
+        expect(a.bar).to.equal('abc');
+        expect(a.foo(555)).to.equal('original');
+        expect(result).to.equal('b555');
+    });
+    it('allows for observing the end of a method on an injected class', () => {
+        let result : string = '';
+        class A {
+            bar = 'abc';
+            foo(faz : number) { 
+                result += faz.toString();
+                return 'original';
+            } 
+        };
+
+        let i = injector([provide(A), alter(A, {
+            afterFoo() { result += 'a' }
+        })]);
+
+        let a = i.provide(A);
+        expect(a.bar).to.equal('abc');
+        expect(a.foo(555)).to.equal('original');
+        expect(result).to.equal('555a');
+    });
+    it('allows for observing the start and end of a method on an injected class', () => {
+        let result : string = '';
+        class A {
+            bar = 'abc';
+            foo(faz : number) { 
+                result += faz.toString();
+                return 'original';
+            } 
+        };
+
+        let i = injector([provide(A), alter(A, {
+            afterFoo() { result += 'a' },
+            beforeFoo() { result += 'b' }
+        })]);
+
+        let a = i.provide(A);
+        expect(a.bar).to.equal('abc');
+        expect(a.foo(555)).to.equal('original');
+        expect(result).to.equal('b555a');
+    });
+    it('allows for wrapping a method on an injected class', () => {
+        let result : string = '';
+        class A {
+            bar = 'abc';
+            foo(faz : number) { 
+                result += faz.toString();
+                return 'original';
+            } 
+        };
+
+        let i = injector([provide(A), alter(A, {
+            aroundFoo(original) {
+                return function(faz : number) {
+                    return original.call(this, faz) + '/replaced';
+                }
+            }
+        })]);
+
+        let a = i.provide(A);
+        expect(a.bar).to.equal('abc');
+        expect(a.foo(555)).to.equal('original/replaced');
+    });
+    it('allows for start/end/around at the same time for a method on an injected class', () => {
+        let result : string = '';
+        class A {
+            bar = 'abc';
+            foo(faz : number) { 
+                result += faz.toString();
+                return 'original';
+            } 
+        };
+
+        let i = injector([provide(A), alter(A, {
+            beforeFoo() { result += 'b'; },
+            afterFoo() { result += 'a'; },
+            aroundFoo(original) {
+                return function(faz : number) {
+                    result += 'A';
+                    return original.call(this, faz) + '/replaced';
+                }
+            }
+        })]);
+
+        let a = i.provide(A);
+        expect(a.bar).to.equal('abc');
+        expect(a.foo(544)).to.equal('original/replaced');
+        expect(result).to.equal('bA544a');
     });
 });

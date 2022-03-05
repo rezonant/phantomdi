@@ -1,5 +1,6 @@
 import { InterfaceToken, reflect, ReflectedClass, ReflectedConstructorParameter, ReflectedFunctionParameter, ReflectedMethodParameter, ReflectedTypeRef } from 'typescript-rtti';
-import { Constructor } from './common';
+import { capitalize, Constructor } from './common';
+import { Inject } from './decorators';
 export interface Dependency<T = any> { tokens : any[]; optional? : boolean; default? : () => T; }
 
 export type Provider = (...args) => any;
@@ -19,8 +20,17 @@ export class Injector {
      * @param providers 
      * @param parent 
      */
-    constructor(providers : [any, Function][], parent? : Injector) {
-        this.#providers = new Map(providers);
+    constructor(providers : [any, Provider][], parent? : Injector) {
+        this.#providers = new Map(providers.filter(([token]) => !token[ALTERS]));
+
+        let alterations = new Map<any, Function[]>();
+        for (let [alteredToken, provider] of providers.filter(([token]) => token[ALTERS])) {
+            let token = alteredToken[ALTERS];
+            if (!alterations.has(token))
+                alterations.set(token, []);
+            alterations.get(token).push(provider);
+        }
+        this.#alterations = alterations;
         this.#providers.set(Injector, () => this);
         this.#parent = parent;
     }
@@ -36,6 +46,7 @@ export class Injector {
 
     #parent? : Injector;
     #providers = new Map<any, Function>();
+    #alterations = new Map<any, Function[]>();
     #resolved = new Map<any, any>();
 
     /**
@@ -69,6 +80,7 @@ export class Injector {
         }
         
         let resolved = this.invoke(globalThis, this.#providers.get(token));
+        resolved = this.prepare(token, resolved);
         this.#resolved.set(token, resolved);
         return resolved;
     }
@@ -91,7 +103,7 @@ export class Injector {
      * @returns 
      */
     construct<T>(klass : Constructor<T>): T {
-        return this.prepare(new klass(...this.analyze(klass).map(d => this.resolve(d))));
+        return new klass(...this.analyze(klass).map(d => this.resolve(d)));
     }
 
     /**
@@ -99,7 +111,7 @@ export class Injector {
      * @param instance 
      * @returns 
      */
-    private prepare<T>(instance : T): T {
+    private prepare<T>(token : any, instance : T): T {
         reflect(instance).properties
             .filter(x => x.hasMetadata('pdi:inject'))
             .forEach(p => instance[p.name] = carry(
@@ -111,7 +123,21 @@ export class Injector {
         if (instance['onInjectionCompleted'])
             this.invoke(instance, instance['onInjectionCompleted']);
         
+        instance = this.applyAlterations(token, instance);
         return instance;
+    }
+
+    derive(providers : [any, Provider][]) {
+        return new Injector(providers, this);
+    }
+
+    private applyAlterations<T>(token : any, instance : T): T {
+        return (this.#alterations.get(token) ?? [])
+            .reduce((instance, alteration) => 
+                this.derive([[token, () => instance]])
+                    .invoke(globalThis, alteration), 
+                instance
+            );
     }
 
     /**
@@ -186,7 +212,7 @@ export class Injector {
  * @param parent 
  * @returns 
  */
-export function injector(providers : [any, Function][], parent? : Injector): Injector {
+export function injector(providers : [any, Provider][], parent? : Injector): Injector {
     return new Injector(providers, parent);
 }
 
@@ -206,11 +232,77 @@ export function construct(constructor : Constructor): Provider { return Injector
  *                    parameters will be provided by the dependency injector.
  * @returns 
  */
-export function provide<T>(constructor : Constructor<T>, klass? : Constructor<T>): [ Function, Function ];
-export function provide<T>(token : any, provider : Provider): [ any, Function ];
-export function provide(token : any, value? : any): [ any, Function ] {
+export function provide<T>(constructor : Constructor<T>, klass? : Constructor<T>): [ Function, Provider ];
+export function provide<T>(token : any, provider : Provider): [ any, Provider ];
+export function provide(token : any, value? : any): [ any, Provider ] {
     if (arguments.length === 1)
         return [token, token && reflect(token) instanceof ReflectedClass ? construct(token) : token];
     else
         return [token, value && reflect(value) instanceof ReflectedClass ? construct(value) : value];
+}
+
+const ALTERS = Symbol('alters');
+
+type JustStringKeys<T> = ({[P in keyof T]: P extends string ? P : never });
+type JustMethodKeys<T> = ({[P in keyof T]: T[P] extends (...args) => any ? P : never })[keyof T];  
+
+type BeforeAlteration<T> = {
+    [P in JustMethodKeys<T> as `before${Capitalize<string & P>}`]? 
+    : T[P] extends (...args) => any ? (...params : Parameters<T[P]>) => void : never;
+};
+type AfterAlteration<T> = {
+    [P in JustMethodKeys<T> as `after${Capitalize<string & P>}`]? 
+    : T[P] extends (...args) => any ? (...params : Parameters<T[P]>) => void : never;
+};
+type AroundAlteration<T> = {
+    [P in JustMethodKeys<T> as `around${Capitalize<string & P>}`]? : (original : T[P]) => T[P];
+};
+type ReplaceAlteration<T> = {
+    [P in JustMethodKeys<T> as P]? : T[P];
+};
+
+type OverrideAlteration<T> = {
+    [P in JustMethodKeys<T>]? : T[P];
+};
+
+export type Alteration<T> = OverrideAlteration<T> & BeforeAlteration<T> & AfterAlteration<T> & AroundAlteration<T> & ReplaceAlteration<T>;
+export function alter<T>(klass : Constructor<T>, alteration : Alteration<T>): [ any, Provider ];
+export function alter<T>(token : any, alteration : Provider | Alteration<T>): [ any, Provider ] {
+    if (typeof alteration === 'function')
+        return [{ [ALTERS]: token }, alteration];
+
+    return [{ [ALTERS]: token }, (injector : Injector) => {
+        let instance = injector.provide(token);
+
+        return new Proxy(instance, {
+            get(target, property : string | symbol, receiver) {
+                if (typeof property === 'symbol')
+                    return target[property];
+                
+                let value = target[property];
+                if (property in alteration)
+                    value = alteration[property];
+
+                if (typeof value === 'function') {
+                    let cap = `${capitalize(property)}`;
+                    if (alteration[`around${cap}`])
+                        value = alteration[`around${cap}`](value);
+
+                    if (alteration[`before${cap}`] || alteration[`after${cap}`]) {
+                        let original = value;
+                        value = function (...args) {
+                            try {
+                                alteration[`before${cap}`]?.call(this, ...args);
+                                return original.call(this, ...args);
+                            } finally {
+                                alteration[`after${cap}`]?.call(this, ...args);
+                            }
+                        };
+                    }
+                }
+
+                return value;
+            }
+        });
+    }];
 }
