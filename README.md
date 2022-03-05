@@ -22,3 +22,35 @@ class A {
 let a = injector([ provide(reify<Foobar>, { version: 123 }), provide(A) ]).provide(A)
 expect(a.version).to.equal(123);
 ```
+
+Functions:
+
+```typescript
+import { injector, provide } from 'phantomdi';
+
+class A { foo: 123 }
+class B { bar: 321 }
+
+function foobar(a : A, b : B) {
+    return a.foo + b.bar;
+}
+
+expect(injector([ provide(A), provide(B) ]).invoke(globalThis, foobar))
+    .to.equal(123 + 321);
+```
+
+Optional:
+
+```typescript
+import { injector, provide } from 'phantomdi';
+
+class A { foo: 123 }
+class B { bar: 321 }
+
+function foobar(a : A, b : B) {
+    return a.foo + b.bar;
+}
+
+expect(injector([ provide(A), provide(B) ]).invoke(globalThis, foobar))
+    .to.equal(123 + 321);
+```

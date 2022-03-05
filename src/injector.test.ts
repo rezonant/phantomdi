@@ -295,7 +295,7 @@ describe('Injector', () => {
         
         expect(caughtError).to.exist;
     });
-    it('injects on functions', () => {
+    it('injects on function params', () => {
         class A { foo = 123 };
         class B { bar = 321 };
 
@@ -317,5 +317,61 @@ describe('Injector', () => {
         expect(resultFoo).to.equal(123);
         expect(resultBar).to.equal(321);
         expect(resultFooBar).to.equal(123 + 321);
+    });
+    it('throws for missing dependency on function param', () => {
+        class A { foo = 123 };
+        class B { bar = 321 };
+
+        function foobar(a : A, b : B) {
+            return `shouldn't happen`;
+        }
+
+        let caughtError;
+
+        try {
+            injector([provide(A)]).invoke(globalThis, foobar);
+        } catch (e) {
+            caughtError = e;
+        }
+
+        expect(caughtError).to.exist;
+    });
+    it('optionally injects on function param', () => {
+        class A { foo = 123 };
+        class B { bar = 321 };
+
+        function foo(a : A, b : B) {
+            return a.foo;
+        }
+
+        function bar(a : A, b : B) {
+            return b.bar;
+        }
+
+        function foobar(a : A, b? : B) {
+            return b;
+        }
+
+        let result = injector([provide(A)]).invoke(globalThis, foobar);
+        expect(result).not.to.exist;
+    });
+    it('uses default value for missing function param', () => {
+        class A { foo = 123 };
+        class B { constructor(readonly bar = 321) { } };
+
+        function foo(a : A, b : B) {
+            return a.foo;
+        }
+
+        function bar(a : A, b : B) {
+            return b.bar;
+        }
+
+        function foobar(a : A, b : B = new B(555)) {
+            return a.foo + b.bar;
+        }
+
+        let result = injector([provide(A)]).invoke(globalThis, foobar);
+        expect(result).to.equal(123 + 555);
     });
 });

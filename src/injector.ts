@@ -120,7 +120,15 @@ export class Injector {
      * @returns 
      */
     private resolve(dep : Dependency) {
-        return this.invoke(globalThis, () => dep.tokens.map(t => this.provide(t, undefined)).filter(x => x)[0]);
+        return this.invoke(globalThis, () => carry(
+            dep.tokens.map(t => this.provide(t, undefined))
+                .filter(x => x)[0],
+            value => {
+                if (value === undefined && !dep.optional)
+                    throw new Error(`No provider for dependency: ${dep.tokens.map(t => t.name ?? t).join(' | ')}`);
+                return value ?? dep.default?.();
+            }
+        ));
     }
 
     /**
@@ -132,8 +140,16 @@ export class Injector {
         return reflect(ctor).metadata('pdi:deps', () => Object.seal(
             reflect(ctor)
                 .parameters
-                .map(p => ({ ...this.paramDependency(p), optional: p.isOptional, default: p.initializer }))
+                .map(p => ({ 
+                    ...this.paramDependency(p), 
+                    optional: this.paramOptional(p), 
+                    default: p.initializer
+                }))
         ));
+    }
+
+    private paramOptional(param : ReflectedConstructorParameter | ReflectedFunctionParameter) {
+        return param.isOptional || param.parent.getMetadata(`pdi:optional:param:${param.index}`) || !!param.initializer;
     }
 
     private paramDependency(param : ReflectedConstructorParameter | ReflectedFunctionParameter): Dependency {
@@ -155,6 +171,8 @@ export class Injector {
             return { tokens: [ typeRef.class ] };
         else if (typeRef.isInterface())
             return { tokens: [ typeRef.token ] };
+        else if (typeRef.isLiteral())
+            return { tokens: [ typeRef.value.constructor ]}
         else
             throw new TypeError(`Unsupported type ref: ${typeRef}`);
     }
