@@ -188,6 +188,22 @@ describe('Injector', () => {
 
         expect(b.a).not.to.exist;
     });
+    it('supports Typescript optional for constructor parameter when no provider is available', () => {
+        const TOKEN = { name: 'something' };
+
+        class A { foo = 123; };
+        class B {
+            constructor(readonly a? : A) { }
+            get foo() {
+                return this.a.foo;
+            }
+        }
+
+        let injector = new Injector([provide(B)]);
+        let b = injector.provide(B);
+
+        expect(b.a).not.to.exist;
+    });
     it('calls onInjectionCompleted after construction', () => {
         let count = 0;
 
