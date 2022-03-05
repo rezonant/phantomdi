@@ -15,9 +15,13 @@
   },
   "author": "William Lahti",
   "license": "MIT",
-  "keywords": ["dependency injection", "di", "mock"],
+  "keywords": [
+    "dependency injection",
+    "di",
+    "mock"
+  ],
   "dependencies": {
-    "typescript-rtti": "^0.4.6"
+    "typescript-rtti": "^0.4.7"
   },
   "peerDependencies": {
     "reflect-metadata": "^0.1.13"
