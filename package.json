@@ -10,7 +10,8 @@
   },
   "scripts": {
     "build": "ttsc && ttsc -p tsconfig.esm.json",
-    "test": "npm run build && nyc node dist/test"
+    "test": "npm run build && nyc node dist/test",
+    "prepublishOnly": "npm run test"
   },
   "author": "William Lahti",
   "license": "MIT",
