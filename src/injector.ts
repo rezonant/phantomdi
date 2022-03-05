@@ -1,4 +1,4 @@
-import { InterfaceToken, reflect, ReflectedConstructorParameter, ReflectedFunctionParameter, ReflectedMethodParameter, ReflectedTypeRef } from 'typescript-rtti';
+import { InterfaceToken, reflect, ReflectedClass, ReflectedConstructorParameter, ReflectedFunctionParameter, ReflectedMethodParameter, ReflectedTypeRef } from 'typescript-rtti';
 import { Constructor } from './common';
 export interface Dependency<T = any> { tokens : any[]; optional? : boolean; default? : () => T; }
 
@@ -188,6 +188,8 @@ export function construct(constructor : Constructor): Provider { return Injector
  *                    parameters will be provided by the dependency injector.
  * @returns 
  */
-export function provide<T>(constructor : Constructor<T>, klass? : Constructor<T>): [ Function, Function ] {
-    return [constructor, construct(klass ?? constructor)];
+export function provide<T>(constructor : Constructor<T>, klass? : Constructor<T>): [ Function, Function ];
+export function provide<T>(token : any, provider : Provider): [ any, Function ];
+export function provide(token : any, value : any): [ any, Function ] {
+    return [token, reflect(construct) instanceof ReflectedClass ? construct(value) : value];
 }
