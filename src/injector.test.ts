@@ -494,4 +494,36 @@ describe('Injector', () => {
         expect(a.foo(544)).to.equal('original/replaced');
         expect(result).to.equal('bA544a');
     });
+    it('supports arbitrary alterations', () => {
+        let result : string = '';
+        class A {
+            constructor(readonly bar = 'abc') { };
+            foo(faz : number) { 
+                result += faz.toString();
+                return 'original';
+            } 
+        };
+
+        let a1 = new A('def');
+        let i = injector([provide(A), alter(A, () => a1) ]);
+        let a2 = i.provide(A);
+        expect(a1).to.equal(a2);
+        expect(a2.bar).to.equal('def');
+    });
+    it('supports unrelated alterations', () => {
+        let result : string = '';
+        class A {
+            constructor(readonly bar = 'abc') { };
+            foo(faz : number) { 
+                result += faz.toString();
+                return 'original';
+            } 
+        };
+
+        let a1 = { bar: 'def' };
+        let i = injector([provide(A), alter(A, () => a1) ]);
+        let a2 = i.provide(A);
+        expect(a1).to.equal(a2);
+        expect(a2.bar).to.equal('def');
+    });
 });

@@ -266,7 +266,7 @@ type OverrideAlteration<T> = {
 };
 
 export type Alteration<T> = OverrideAlteration<T> & BeforeAlteration<T> & AfterAlteration<T> & AroundAlteration<T> & ReplaceAlteration<T>;
-export function alter<T>(klass : Constructor<T>, alteration : Alteration<T>): [ any, Provider ];
+export function alter<T>(klass : Constructor<T>, alteration : Provider | Alteration<T>): [ any, Provider ];
 export function alter<T>(token : any, alteration : Provider | Alteration<T>): [ any, Provider ] {
     if (typeof alteration === 'function')
         return [{ [ALTERS]: token }, alteration];
