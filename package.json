@@ -1,10 +1,15 @@
 {
   "name": "phantomdi",
   "version": "0.0.1",
-  "description": "",
+  "description": "A dependency injection framework",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "module": "dist.esm/index.js",
+  "repository": {
+    "url": "https://github.com/rezonant/phantomdi"
+  },
   "scripts": {
-    "build": "ttsc",
+    "build": "ttsc && ttsc -p tsconfig.esm.json",
     "test": "npm run build && nyc node dist/test"
   },
   "author": "William Lahti",
