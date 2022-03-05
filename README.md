@@ -12,6 +12,7 @@
 * Alter injectables using aspect-oriented programming
 * Also supports the standard `emitDecoratorMetadata`-style injection (a la Angular, `injection-js`, 
   `@alterior/di`, etc)
+* Well tested: 87% coverage
 
 ```typescript
 import { injector, provide } from 'phantomdi';
