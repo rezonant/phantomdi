@@ -295,7 +295,7 @@ describe('Injector', () => {
         
         expect(caughtError).to.exist;
     });
-    it.only('injects on functions', () => {
+    it('injects on functions', () => {
         class A { foo = 123 };
         class B { bar = 321 };
 
