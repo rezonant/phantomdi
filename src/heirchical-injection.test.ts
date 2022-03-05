@@ -18,4 +18,35 @@ describe('Injector with parent', it => {
 
         expect(b.provide(Foo).foo).to.equal(321);
     });
+    it('takes default from parent injector', () => {
+        class Foo { foo = 123; }
+        class Bar { 
+            constructor(readonly foo? : Foo) {}
+        }
+        let a = new Injector([ ]);
+        let b = new Injector([ provide(Bar) ], a);
+
+        expect(b.provide(Bar).foo).to.not.exist;
+    });
+    it('injects inferred type', () => {
+        class Bar {
+            constructor(readonly foo = 123) {}
+        }
+        let i = new Injector([ provide(Number, () => 321), provide(Bar) ]);
+        expect(i.provide(Bar).foo).to.equal(321);
+    });
+    it('throws for unsupported type ref', () => {
+        class Bar { 
+            constructor(readonly foo : string & { foo: 123 }) {}
+        }
+
+        let caughtError;
+        try {
+            new Injector([ provide(Bar) ]).provide(Bar);
+        } catch (e) {
+            caughtError = e;
+        }
+
+        expect(caughtError).to.exist;
+    });
 });
