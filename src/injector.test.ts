@@ -80,4 +80,59 @@ describe('Injector', () => {
         expect(b.foo).to.equal(123);
         expect(b.a).to.equal(value);
     })
+    it('throws when no provider is available', () => {
+        const TOKEN = { name: 'something' };
+
+        class B {
+            @Inject(TOKEN) a : any;
+            get foo() {
+                return this.a.foo;
+            }
+        }
+
+        let value = { foo: 123 };
+        let injector = new Injector([]);
+        let caughtError;
+
+        try {
+            injector.provide(B);
+        } catch (e) {
+            caughtError = e;
+        }
+        
+        expect(caughtError).to.exist;
+    });
+    it('calls onInjectionCompleted after construction', () => {
+        let count = 0;
+
+        class B {
+            onInjectionCompleted() {
+                count += 1;
+            }
+        }
+
+        let injector = new Injector([ provide(B) ]);
+        injector.provide(B);
+        
+        expect(count).to.equal(1);
+    });
+    it('constructs a subdependency exactly once', () => {
+        let count = 0;
+
+        class A {
+            onInjectionCompleted() {
+                count += 1;
+            }
+        }
+
+        class B {
+            constructor(readonly a : A) { }
+        }
+
+        let injector = new Injector([ provide(A), provide(B) ]);
+        injector.provide(A);
+        injector.provide(B);
+        
+        expect(count).to.equal(1);
+    });
 });
