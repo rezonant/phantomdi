@@ -21,6 +21,11 @@ export class Injector {
         this.#parent = parent;
     }
 
+    /**
+     * Creates a dependency injection provider which constructs the given class.
+     * @param constructor 
+     * @returns 
+     */
     static construct(constructor : Constructor): Provider {
         return (i : Injector) => i.construct(constructor);
     }
