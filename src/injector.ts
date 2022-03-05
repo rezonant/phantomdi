@@ -4,6 +4,10 @@ export interface Dependency<T = any> { tokens : any[]; optional? : boolean; defa
 
 export type Provider = (...args) => any;
 
+function carry<T,U>(v : T, callback : (v : T) => U) {
+    return callback(v);
+}
+
 /**
  * Represents a dependency injector.
  */
@@ -91,7 +95,10 @@ export class Injector {
     private prepare<T>(instance : T): T {
         reflect(instance).properties
             .filter(x => x.hasMetadata('pdi:inject'))
-            .forEach(p => instance[p.name] = this.provide(p.getMetadata('pdi:inject') ?? p.type.as('class').class))
+            .forEach(p => instance[p.name] = carry(
+                p.getMetadata('pdi:inject') ?? p.type.as('class').class, 
+                token => (p.isOptional || p.getMetadata('pdi:optional') === true) ? this.provide(token, undefined) : this.provide(token)
+            ))
         ;
 
         if (instance['onInjectionCompleted'])

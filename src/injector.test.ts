@@ -1,7 +1,7 @@
 import { describe, it } from "razmin";
 import { construct, injector, Injector, provide } from "./injector";
 import { expect } from "chai";
-import { Inject } from "./decorators";
+import { Inject, Optional } from "./decorators";
 import { reify } from "typescript-rtti";
 
 describe('Injector', () => {
@@ -106,6 +106,87 @@ describe('Injector', () => {
         }
         
         expect(caughtError).to.exist;
+    });
+    it('supports @Optional() for constructor param when no provider is available', () => {
+        const TOKEN = { name: 'something' };
+
+        class A { foo = 123; }
+
+        class B {
+            constructor(@Optional() readonly a : A) {}
+
+            get foo() {
+                return this.a.foo;
+            }
+        }
+
+        let injector = new Injector([provide(B)]);
+        let b = injector.provide(B);
+        
+        expect(b.a).not.to.exist;
+    });
+    it('supports @Optional() for constructor param with custom token when no provider is available', () => {
+        const TOKEN = { name: 'something' };
+
+        class B {
+            constructor(@Inject(TOKEN) @Optional() readonly a : any) {}
+
+            get foo() {
+                return this.a.foo;
+            }
+        }
+
+        let value = { foo: 123 };
+        let injector = new Injector([provide(B)]);
+        let b = injector.provide(B);
+
+        expect(b.a).not.to.exist;
+    });
+    it('supports @Optional() for property with custom token when no provider is available', () => {
+        const TOKEN = { name: 'something' };
+
+        class B {
+            @Inject(TOKEN) @Optional() a : any;
+            get foo() {
+                return this.a.foo;
+            }
+        }
+
+        let injector = new Injector([provide(B)]);
+        let b = injector.provide(B);
+
+        expect(b.a).not.to.exist;
+    });
+    it('supports Typescript optional for property with custom token when no provider is available', () => {
+        const TOKEN = { name: 'something' };
+
+        class B {
+            @Inject(TOKEN) a? : any;
+            get foo() {
+                return this.a.foo;
+            }
+        }
+
+        let injector = new Injector([provide(B)]);
+        let b = injector.provide(B);
+
+        expect(b.a).not.to.exist;
+    });
+    it('supports Typescript optional for property when no provider is available', () => {
+        const TOKEN = { name: 'something' };
+
+        class A { foo = 123; };
+        class B {
+            @Inject() a? : A;
+            get foo() {
+                return this.a.foo;
+            }
+        }
+
+        let injector = new Injector([provide(B)]);
+        let b = injector.provide(B);
+
+        expect(b.a).not.to.exist;
     });
     it('calls onInjectionCompleted after construction', () => {
         let count = 0;
