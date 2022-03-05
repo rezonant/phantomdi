@@ -14,7 +14,7 @@ describe('Injector with parent', it => {
         class Foo { foo = 123; }
         class Bar extends Foo { foo = 321; }
         let a = new Injector([ provide(Foo) ]);
-        let b = new Injector([ provide(Bar) ], a);
+        let b = new Injector([ provide(Foo, Bar) ], a);
 
         expect(b.provide(Foo).foo).to.equal(321);
     });

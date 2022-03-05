@@ -188,6 +188,6 @@ export function construct(constructor : Constructor): Provider { return Injector
  *                    parameters will be provided by the dependency injector.
  * @returns 
  */
-export function provide<T>(constructor : Constructor<T>): [ Function, Function ] {
-    return [constructor, construct(constructor)];
+export function provide<T>(constructor : Constructor<T>, klass? : Constructor<T>): [ Function, Function ] {
+    return [constructor, construct(klass ?? constructor)];
 }
