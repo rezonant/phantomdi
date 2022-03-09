@@ -103,7 +103,14 @@ export class Injector {
      * @returns 
      */
     construct<T>(klass : Constructor<T>): T {
-        return new klass(...this.analyze(klass).map(d => this.resolve(d)));
+        try {
+            return new klass(...this.analyze(klass).map(d => this.resolve(d)));
+        } catch (e) {
+            if (e.message === 'klass is not a constructor')
+                throw new Error(`Cannot construct '${klass}': only a valid constructor can be passed here unless you provide a function`);
+            else
+                throw e;
+        }
     }
 
     /**

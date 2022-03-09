@@ -567,5 +567,32 @@ describe('Injector', () => {
         const provider2 = provide(A)
         const a = injector([ provider1, provider2 ]).provide(A)
         expect(a.version).to.equal(123);
-    })
+    });
+    it('should throw when accidentally providing a constant object instead of a function returning a constant object', () => {
+        interface Foobar { 
+            version : number;
+        }
+
+        class A {
+
+            constructor(readonly foobar : Foobar) {
+
+            }
+
+            get version() { return this.foobar.version; }
+        }
+
+        const provider1 = provide(reify<Foobar>(), <any>{ version: 123 })
+        const provider2 = provide(A)
+        let caughtError;
+
+        try {
+           injector([ provider1, provider2 ]).provide(A)
+        } catch (e) {
+            caughtError = e;
+        }
+
+        expect(caughtError).to.exist;
+        expect(caughtError.message).to.equal(`Cannot construct '[object Object]': only a valid constructor can be passed here unless you provide a function`);
+    });
 });
