@@ -566,6 +566,6 @@ describe('Injector', () => {
         const provider1 = provide(reify<Foobar>(), () => ({ version: 123 }))
         const provider2 = provide(A)
         const a = injector([ provider1, provider2 ]).provide(A)
-        console.log(a)
+        expect(a.version).to.equal(123);
     })
 });
