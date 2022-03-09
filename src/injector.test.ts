@@ -526,4 +526,28 @@ describe('Injector', () => {
         expect(a1).to.equal(a2);
         expect(a2.bar).to.equal('def');
     });
+    
+    it.skip('does not interfere with symbols during alteration', () => {
+        let result : string = '';
+        let sym = Symbol();
+
+        class A {
+            constructor(readonly bar = 'abc') { 
+            };
+
+            [sym]() {
+                return 123;
+            }
+
+            foo(faz : number) { 
+                result += faz.toString();
+                return 'original';
+            } 
+        };
+
+        let i = injector([provide(A), alter(A, { beforeFoo() { } }) ]);
+        let a2 = i.provide(A);
+        expect(a2[sym]()).to.equal(123);
+
+    });
 });
