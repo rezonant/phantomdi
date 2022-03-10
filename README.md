@@ -30,7 +30,7 @@ class A {
     get version() { return this.foobar.version; }
 }
 
-let a = injector([ provide(reify<Foobar>, { version: 123 }), provide(A) ]).provide(A)
+let a = injector([ provide(reify<Foobar>, () => ({ version: 123 })), provide(A) ]).provide(A)
 expect(a.version).to.equal(123);
 ```
 
