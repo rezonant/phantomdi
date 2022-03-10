@@ -21,7 +21,7 @@
     "mock"
   ],
   "dependencies": {
-    "typescript-rtti": "^0.4.15"
+    "typescript-rtti": "^0.4.16"
   },
   "peerDependencies": {
     "reflect-metadata": "^0.1.13"
