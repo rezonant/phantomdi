@@ -527,7 +527,7 @@ describe('Injector', () => {
         expect(a2.bar).to.equal('def');
     });
     
-    it.skip('does not interfere with symbols during alteration', () => {
+    it('does not interfere with symbols during alteration', () => {
         let result : string = '';
         let sym = Symbol();
 
