@@ -1,6 +1,6 @@
 {
   "name": "phantomdi",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "A dependency injection framework",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -21,7 +21,7 @@
     "mock"
   ],
   "dependencies": {
-    "typescript-rtti": "^0.4.16"
+    "typescript-rtti": "^0.5.0"
   },
   "peerDependencies": {
     "reflect-metadata": "^0.1.13"

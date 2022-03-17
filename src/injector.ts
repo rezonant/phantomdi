@@ -5,6 +5,15 @@ export interface Dependency<T = any> { tokens : any[]; optional? : boolean; defa
 
 export type Provider = (...args) => any;
 
+
+export function genericImpl<T>(type: ReflectedTypeRef, instance: T){
+  if( !type.isGeneric() ){
+    throw new Error('Provided a non-generic instance: ' + instance)
+  }
+  // @ts-ignore (what's the right move here?)
+  return provide( type.ref, () => instance);
+}
+
 function carry<T,U>(v : T, callback : (v : T) => U) {
     return callback(v);
 }
@@ -62,6 +71,12 @@ export class Injector {
     provide(token : any, defaultValue? : any): any;
     provide(token : any, defaultValue? : any): any {
         let hasDefault = arguments.length > 1;
+
+        // TODO: ask @rezonant if this is safe
+        if( token instanceof ReflectedTypeRef && token.isGeneric()){
+          // @ts-ignore
+          token = token.ref
+        }
 
         if (this.#resolved.has(token))
             return this.#resolved.get(token);
@@ -206,6 +221,9 @@ export class Injector {
             return { tokens: [ typeRef.token ] };
         else if (typeRef.isLiteral())
             return { tokens: [ typeRef.value.constructor ]}
+        else if (typeRef.isGeneric() )
+          // TODO: ask @rezonant for a better way to handle this
+          return { tokens: [ typeRef ]}
         else
             throw new TypeError(`Unsupported type ref: ${typeRef}`);
     }
