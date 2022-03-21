@@ -1,17 +1,17 @@
-import { InterfaceToken, reflect, ReflectedClass, ReflectedConstructorParameter, ReflectedFunctionParameter, ReflectedMethodParameter, ReflectedTypeRef } from 'typescript-rtti';
+import { InterfaceToken, reflect, ReflectedClass, ReflectedConstructorParameter, ReflectedFunctionParameter, ReflectedGenericRef, ReflectedMetadataTarget, ReflectedMethodParameter, ReflectedTypeRef } from 'typescript-rtti';
 import { capitalize, Constructor } from './common';
 import { Inject } from './decorators';
+import deepEqual from 'deep-equal';
 export interface Dependency<T = any> { tokens : any[]; optional? : boolean; default? : () => T; }
 
 export type Provider = (...args) => any;
 
 
 export function genericImpl<T>(type: ReflectedTypeRef, instance: T){
-  if( !type.isGeneric() ){
-    throw new Error('Provided a non-generic instance: ' + instance)
+  if( type.kind !== 'generic' ){
+    throw new Error(`TypeRef ${JSON.stringify(type || {})} kind is "${type.kind}"; must be generic.`)
   }
-  // @ts-ignore (what's the right move here?)
-  return provide( type.ref, () => instance);
+  return provide( type, () => instance);
 }
 
 function carry<T,U>(v : T, callback : (v : T) => U) {
@@ -31,6 +31,7 @@ export class Injector {
      */
     constructor(providers : [any, Provider][], parent? : Injector) {
         this.#providers = new Map(providers.filter(([token]) => !token[ALTERS]));
+        this.#generics = providers.filter(([token]) => (token instanceof ReflectedGenericRef)).map( ([token]) => token);
 
         let alterations = new Map<any, Function[]>();
         for (let [alteredToken, provider] of providers.filter(([token]) => token[ALTERS])) {
@@ -57,6 +58,7 @@ export class Injector {
     #providers = new Map<any, Function>();
     #alterations = new Map<any, Function[]>();
     #resolved = new Map<any, any>();
+    #generics = [] as ReflectedGenericRef[];
 
     /**
      * Provide an instance for the given class. 
@@ -71,11 +73,11 @@ export class Injector {
     provide(token : any, defaultValue? : any): any;
     provide(token : any, defaultValue? : any): any {
         let hasDefault = arguments.length > 1;
-
         // TODO: ask @rezonant if this is safe
-        if( token instanceof ReflectedTypeRef && token.isGeneric()){
-          // @ts-ignore
-          token = token.ref
+
+        // if it's a generic ref, lookup the specific match we put in the map
+        if( token instanceof ReflectedGenericRef && token.isGeneric()){
+          token = this.#generics.find(t => t.matchesRef(token)) || token
         }
 
         if (this.#resolved.has(token))
