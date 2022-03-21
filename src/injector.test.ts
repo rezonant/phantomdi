@@ -1,8 +1,8 @@
 import { describe, it } from "razmin";
-import { alter, construct, injector, Injector, provide } from "./injector";
+import { alter, construct, genericImpl, injector, Injector, provide } from "./injector";
 import { expect } from "chai";
 import { Inject, Optional } from "./decorators";
-import { reify } from "typescript-rtti";
+import { reflect, reify } from "typescript-rtti";
 
 describe('Injector', () => {
     it('performs simple class injection', () => {
@@ -594,5 +594,27 @@ describe('Injector', () => {
 
         expect(caughtError).to.exist;
         expect(caughtError.message).to.equal(`Cannot construct '[object Object]': only a valid constructor can be passed here unless you provide a function`);
+    });
+
+    it('should resolve generic typed instances', async () => {
+      class Dummy<T> {
+        public constructor(
+          public value: T
+        ){}
+      }
+    
+      const anyImpl = new Dummy<any>({ input: '123' })
+      const stringImpl = new Dummy<string>('foo')
+    
+      const inj = injector([ 
+        genericImpl(reflect<Dummy<any>>(), anyImpl),
+        genericImpl(reflect<Dummy<string>>(), stringImpl),
+      ])
+    
+      const anyFn = (dummy: Dummy<any>) => dummy
+      expect(inj.invoke(null, anyFn)).to.equal(anyImpl)
+    
+      const stringFn = (dummy: Dummy<string>) => dummy
+      expect(inj.invoke(null, stringFn)).to.equal(stringImpl)
     });
 });
