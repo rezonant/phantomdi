@@ -120,7 +120,7 @@ export class Injector {
      */
     private prepare<T>(token : any, instance : T): T {
         reflect(instance).properties
-            .filter(x => x.hasMetadata('pdi:inject'))
+            ?.filter(x => x.hasMetadata('pdi:inject'))
             .forEach(p => instance[p.name] = carry(
                 p.getMetadata('pdi:inject') ?? p.type.as('class').class, 
                 token => (p.isOptional || p.getMetadata('pdi:optional') === true) ? this.provide(token, undefined) : this.provide(token)
