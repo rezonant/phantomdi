@@ -6,24 +6,31 @@ import { reify } from "typescript-rtti";
 
 describe('Injector', () => {
     it('performs simple class injection', () => {
+        interface F {
+            (input: string): PromiseLike<void>;
+        }
+       
         class A {
             foo = 123;
         }
 
         class B { 
-            constructor(readonly a : A) {}
+            constructor(readonly a : A, readonly f : F) {}
             get foo() {
                 return this.a.foo;
             }
         }
 
-        let injector = new Injector([provide(A), provide(B)]);
+        const customF: F = (_input: string) => Promise.resolve();
+
+        let injector = new Injector([provide(A), provide(B), provide(reify<F>(), () => customF)]);
 
         let a = injector.provide(A);
         expect(a.foo).to.equal(123);
         let b = injector.provide(B);
         expect(b.foo).to.equal(123);
         expect(b.a).to.equal(a);
+        expect(b.f('xyz')).to.be.an.instanceof(Promise);
     })
     it('performs simple class injection with a custom token', () => {
         const TOKEN = { name: 'something' };
@@ -43,7 +50,7 @@ describe('Injector', () => {
         let b = injector.provide(B);
         expect(b.foo).to.equal(123);
         expect(b.a instanceof A).to.be.true;
-    })
+    });
     it('supports property injection', () => {
         class A {
             foo = 123;
@@ -85,6 +92,10 @@ describe('Injector', () => {
         let injector = new Injector([]);
         expect(injector.provide({ foo: 123 }, 321)).to.equal(321);
     });
+    it('returns provided default value (function) when no provider is available', () => {
+        let injector = new Injector([]);
+        expect(injector.provide((a: number) => a, Math.floor)).to.equal(Math.floor);
+    });
     it('throws when no provider is available', () => {
         const TOKEN = { name: 'something' };
 
@@ -95,7 +106,6 @@ describe('Injector', () => {
             }
         }
 
-        let value = { foo: 123 };
         let injector = new Injector([]);
         let caughtError;
 
@@ -108,7 +118,6 @@ describe('Injector', () => {
         expect(caughtError).to.exist;
     });
     it('supports @Optional() for constructor param when no provider is available', () => {
-        const TOKEN = { name: 'something' };
 
         class A { foo = 123; }
 
@@ -136,7 +145,6 @@ describe('Injector', () => {
             }
         }
 
-        let value = { foo: 123 };
         let injector = new Injector([provide(B)]);
         let b = injector.provide(B);
 
@@ -173,7 +181,6 @@ describe('Injector', () => {
         expect(b.a).not.to.exist;
     });
     it('supports Typescript optional for property when no provider is available', () => {
-        const TOKEN = { name: 'something' };
 
         class A { foo = 123; };
         class B {
@@ -189,7 +196,6 @@ describe('Injector', () => {
         expect(b.a).not.to.exist;
     });
     it('supports Typescript optional for constructor parameter when no provider is available', () => {
-        const TOKEN = { name: 'something' };
 
         class A { foo = 123; };
         class B {
@@ -249,6 +255,23 @@ describe('Injector', () => {
         let b = injector([ [reify<A>(), () => ({ foo: 123 })],  provide(B) ]).provide(B);
         expect(b.a.foo).to.equal(123);
     });
+    it('supports interfaces with call signatures (functions)', () => {
+        interface F {
+            (input: string): PromiseLike<void>;
+        }
+        const customF: F = (_input: string) => Promise.resolve();
+        class B { 
+            constructor(readonly f : F) {}
+            request(input: string) {
+                return this.f(input);
+            }
+        }
+
+        let injector = new Injector([provide(reify<F>(), () => customF), provide(B)]);
+
+        let b = injector.provide(B);
+        expect(b.request('foo')).to.be.an.instanceof(Promise);
+    })
     it('supports unions', () => {
         interface Foo {
             foo : number;
